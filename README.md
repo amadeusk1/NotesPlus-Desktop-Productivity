@@ -36,6 +36,8 @@ Theme, font, and how files open.
 
 No install. Open the `.exe` and it runs.
 
+[Notes+ website](https://amadeusk1.github.io/NotesPlus-Desktop-Productivity/)
+
 ## Run from source
 
 If you want to work on the code, install Node.js, then:
