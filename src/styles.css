@@ -180,11 +180,19 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
   outline: none;
 }
 .style-select-wrap select:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--focus); }
-.settings-btn { margin-left: auto; z-index: 1; }
+.command-end { margin-left: auto; display: flex; align-items: center; gap: 2px; z-index: 1; }
+.command-end .icon-btn { color: var(--text); }
+.fluent-icon {
+  font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets";
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 400;
+  font-style: normal;
+}
 
 /* Workspace / editor */
 .workspace { flex: 1; min-height: 0; position: relative; background: var(--bg-editor); }
-.editor-page, .settings-page { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.editor-page, .settings-page, .blank-page { position: absolute; inset: 0; display: flex; flex-direction: column; }
 .editor-wrap { flex: 1; min-height: 0; position: relative; }
 .formatted-editor, .syntax-editor {
   position: absolute;
@@ -273,7 +281,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .text-btn:hover { background: var(--bg-press); }
 
 /* Settings */
-.settings-page { background: var(--bg); padding: 12px 28px 32px; overflow: auto; }
+.settings-page, .blank-page { background: var(--bg); padding: 12px 28px 32px; overflow: auto; }
 .settings-header { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
 .settings-header h1 { font-size: 20px; font-weight: 600; margin: 0; }
 .settings-group {
@@ -306,6 +314,93 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
   border-radius: var(--radius);
   padding: 0 8px;
 }
+
+/* Tasks */
+.task-composer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 16px;
+  padding: 4px;
+  border: 1px solid var(--stroke-strong);
+  background: var(--bg-input);
+  border-radius: var(--radius);
+}
+.task-composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px var(--focus); }
+.task-composer input {
+  flex: 1;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  outline: none;
+  padding: 0 8px 0 4px;
+  font-size: 13.5px;
+  user-select: text;
+}
+.task-list { display: flex; flex-direction: column; gap: 2px; }
+.task-empty { padding: 16px 8px; color: var(--text-3); font-size: 13.5px; }
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 4px 6px 4px 8px;
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 13.5px;
+}
+.task-row:hover { background: var(--bg-hover); }
+.task-check {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border: 1px solid var(--stroke-strong);
+  border-radius: 3px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: transparent;
+}
+.task-check:hover { border-color: var(--accent); }
+.task-row.done .task-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.task-title {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  user-select: text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-2);
+}
+.task-row.done .task-title { color: var(--text-3); text-decoration: line-through; }
+.task-title-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  border: 1px solid var(--accent);
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  padding: 0 8px;
+  outline: none;
+  font-size: 13.5px;
+  user-select: text;
+}
+.task-delete {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  color: var(--text-2);
+  flex: 0 0 auto;
+}
+.task-row:hover .task-delete, .task-delete:focus { opacity: 1; }
+.task-delete:hover { background: var(--bg-press); color: var(--text); }
 
 /* Status bar */
 .statusbar {
