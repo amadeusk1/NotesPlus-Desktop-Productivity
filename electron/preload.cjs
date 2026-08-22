@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld("notesPlus", {
   setSettings: (settings) => ipcRenderer.invoke("settings:set", settings),
   getSession: () => ipcRenderer.invoke("session:get"),
   setSession: (session) => ipcRenderer.invoke("session:set", session),
+  getTasks: () => ipcRenderer.invoke("tasks:get"),
+  setTasks: (tasks) => ipcRenderer.invoke("tasks:set", tasks),
   getRecent: () => ipcRenderer.invoke("recent:get"),
   addRecent: (filePath) => ipcRenderer.invoke("recent:add", filePath),
   openDialog: () => ipcRenderer.invoke("dialog:open"),

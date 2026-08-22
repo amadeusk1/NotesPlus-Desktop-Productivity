@@ -16,6 +16,7 @@ const USER_DIR = () => app.getPath("userData");
 const SETTINGS_PATH = () => path.join(USER_DIR(), "settings.json");
 const SESSION_PATH = () => path.join(USER_DIR(), "session.json");
 const RECENT_PATH = () => path.join(USER_DIR(), "recent.json");
+const TASKS_PATH = () => path.join(USER_DIR(), "tasks.json");
 
 const DEFAULT_SETTINGS = {
   theme: "dark",
@@ -234,6 +235,11 @@ ipcMain.handle("settings:set", (_e, settings) => {
 ipcMain.handle("session:get", () => readJson(SESSION_PATH(), null));
 ipcMain.handle("session:set", (_e, session) => {
   writeJson(SESSION_PATH(), session);
+});
+
+ipcMain.handle("tasks:get", () => readJson(TASKS_PATH(), []));
+ipcMain.handle("tasks:set", (_e, tasks) => {
+  writeJson(TASKS_PATH(), Array.isArray(tasks) ? tasks : []);
 });
 
 ipcMain.handle("recent:get", () => readJson(RECENT_PATH(), []));
