@@ -31,10 +31,14 @@ const state = {
   zoom: 1,
   recent: [],
   showSettings: false,
+  showBlank: false,
+  tasks: [],
 };
 
 let rich;
 let persistTimer;
+let tasksTimer;
+let editingTaskId = null;
 
 function uid() {
   return crypto.randomUUID();
@@ -266,7 +270,7 @@ function switchTab(id) {
   applyWrap();
   renderTabs();
   updateStatus();
-  $("editor-page").hidden = state.showSettings;
+  $("editor-page").hidden = state.showSettings || state.showBlank;
 }
 
 function applyWrap() {
@@ -465,11 +469,146 @@ function zoomBy(delta) {
   schedulePersist();
 }
 
+function showPage(page) {
+  state.showSettings = page === "settings";
+  state.showBlank = page === "blank";
+  $("settings-page").hidden = page !== "settings";
+  $("blank-page").hidden = page !== "blank";
+  $("editor-page").hidden = page !== "editor";
+  if (page === "settings") syncSettingsForm();
+  if (page === "blank") {
+    renderTasks();
+    $("task-input").focus();
+  }
+}
+
 function showSettings(show) {
-  state.showSettings = show;
-  $("settings-page").hidden = !show;
-  $("editor-page").hidden = show;
-  if (show) syncSettingsForm();
+  showPage(show ? "settings" : "editor");
+}
+
+function persistTasks() {
+  api.setTasks?.(state.tasks.map((t) => ({
+    id: t.id,
+    title: t.title,
+    done: t.done,
+    createdAt: t.createdAt,
+  })));
+}
+
+function schedulePersistTasks() {
+  clearTimeout(tasksTimer);
+  tasksTimer = setTimeout(persistTasks, 400);
+}
+
+function sortedTasks() {
+  return [
+    ...state.tasks.filter((t) => !t.done),
+    ...state.tasks.filter((t) => t.done),
+  ];
+}
+
+function renderTasks() {
+  const list = $("task-list");
+  if (!list) return;
+  const tasks = sortedTasks();
+  if (!tasks.length) {
+    list.innerHTML = '<p class="task-empty">No tasks yet</p>';
+    return;
+  }
+  list.innerHTML = "";
+  for (const task of tasks) {
+    const row = document.createElement("div");
+    row.className = `task-row${task.done ? " done" : ""}`;
+    row.dataset.id = task.id;
+    const editing = editingTaskId === task.id;
+    row.innerHTML = `
+      <button type="button" class="task-check" data-toggle="${task.id}" title="${task.done ? "Mark as not done" : "Mark as done"}" aria-label="${task.done ? "Mark as not done" : "Mark as done"}">
+        ${task.done ? '<svg viewBox="0 0 16 16" width="10" height="10"><path d="M3.2 8.2 6.4 11.2 12.8 4.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ""}
+      </button>
+      ${editing
+        ? `<input class="task-title-input" id="task-edit" value="${escapeHtml(task.title)}" maxlength="240" />`
+        : `<button type="button" class="task-title" data-edit="${task.id}">${escapeHtml(task.title)}</button>`}
+      <button type="button" class="task-delete" data-delete="${task.id}" title="Delete task" aria-label="Delete task">
+        <svg viewBox="0 0 16 16" width="10" height="10"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    `;
+    list.appendChild(row);
+  }
+  list.querySelectorAll("[data-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => toggleTask(btn.dataset.toggle));
+  });
+  list.querySelectorAll("[data-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => startEditTask(btn.dataset.edit));
+  });
+  list.querySelectorAll("[data-delete]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteTask(btn.dataset.delete));
+  });
+  const edit = $("task-edit");
+  if (edit) {
+    edit.focus();
+    edit.select();
+    edit.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        finishEditTask(edit.value);
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        editingTaskId = null;
+        renderTasks();
+      }
+    });
+    edit.addEventListener("blur", () => finishEditTask(edit.value));
+  }
+}
+
+function addTask(title) {
+  const text = title.trim();
+  if (!text) return;
+  state.tasks.unshift({
+    id: uid(),
+    title: text,
+    done: false,
+    createdAt: Date.now(),
+  });
+  $("task-input").value = "";
+  editingTaskId = null;
+  renderTasks();
+  schedulePersistTasks();
+}
+
+function toggleTask(id) {
+  const task = state.tasks.find((t) => t.id === id);
+  if (!task) return;
+  task.done = !task.done;
+  editingTaskId = null;
+  renderTasks();
+  schedulePersistTasks();
+}
+
+function deleteTask(id) {
+  state.tasks = state.tasks.filter((t) => t.id !== id);
+  if (editingTaskId === id) editingTaskId = null;
+  renderTasks();
+  schedulePersistTasks();
+}
+
+function startEditTask(id) {
+  editingTaskId = id;
+  renderTasks();
+}
+
+function finishEditTask(title) {
+  const task = state.tasks.find((t) => t.id === editingTaskId);
+  editingTaskId = null;
+  if (task) {
+    const text = title.trim();
+    if (text) task.title = text;
+    else state.tasks = state.tasks.filter((t) => t.id !== task.id);
+    schedulePersistTasks();
+  }
+  renderTasks();
 }
 
 function syncSettingsForm() {
@@ -832,6 +971,12 @@ function bindUi() {
   $("new-tab").onclick = () => addTab();
   $("open-settings").onclick = () => showSettings(true);
   $("settings-back").onclick = () => showSettings(false);
+  $("open-blank").onclick = () => showPage("blank");
+  $("blank-back").onclick = () => showPage("editor");
+  $("task-composer").addEventListener("submit", (e) => {
+    e.preventDefault();
+    addTask($("task-input").value);
+  });
   $("fmt-bold").onclick = () => applyFormat("bold");
   $("fmt-italic").onclick = () => applyFormat("italic");
   $("fmt-strike").onclick = () => applyFormat("strike");
@@ -935,13 +1080,25 @@ function onKey(e) {
   if (e.key === "Escape") {
     closeMenus();
     $("find-flyout").hidden = true;
-    if (state.showSettings) showSettings(false);
+    if (editingTaskId) {
+      editingTaskId = null;
+      renderTasks();
+      return;
+    }
+    if (state.showSettings || state.showBlank) showPage("editor");
   }
 }
 
 async function restore() {
   state.settings = await api.getSettings();
   state.recent = await api.getRecent();
+  const storedTasks = await api.getTasks?.();
+  state.tasks = Array.isArray(storedTasks) ? storedTasks.filter((t) => t && t.title).map((t) => ({
+    id: t.id || uid(),
+    title: String(t.title),
+    done: Boolean(t.done),
+    createdAt: Number(t.createdAt) || 0,
+  })) : [];
   applyTheme();
   applyEditorChrome();
   const session = !detached && state.settings.startup === "session" ? await api.getSession() : null;
