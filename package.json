@@ -7,9 +7,9 @@
   "author": "Notes+",
   "license": "MIT",
   "scripts": {
-    "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:5174 && node scripts/run-electron.cjs\"",
     "build": "vite build",
-    "start": "electron ."
+    "start": "node scripts/run-electron.cjs"
   },
   "dependencies": {
     "@tiptap/core": "^2.11.5",
