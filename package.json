@@ -1,7 +1,7 @@
 {
   "name": "notes-plus",
   "productName": "Notes+",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A Windows 11 Notepad clone",
   "main": "electron/main.cjs",
   "author": "amadeusk1",
