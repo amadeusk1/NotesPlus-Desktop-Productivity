@@ -72,8 +72,8 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .app-icon { display: grid; place-items: center; width: 28px; height: 28px; flex: 0 0 auto; -webkit-app-region: no-drag; }
 .tabstrip {
   display: flex;
-  align-items: flex-end;
-  gap: 2px;
+  align-items: center;
+  gap: 4px;
   height: 100%;
   overflow-x: auto;
   overflow-y: hidden;
@@ -81,22 +81,24 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
   scrollbar-width: none;
   min-width: 0;
   flex: 0 1 auto;
+  padding: 0 4px;
 }
 .tabstrip::-webkit-scrollbar { display: none; }
 .tab {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 32px;
+  height: 28px;
   min-width: 92px;
   max-width: 180px;
   padding: 0 8px 0 12px;
-  border-radius: 6px 6px 0 0;
+  border-radius: 6px;
   color: var(--text-2);
   font-size: 12px;
   line-height: 1;
   position: relative;
   flex: 0 0 auto;
+  cursor: grab;
 }
 .tab:hover { background: var(--bg-hover); }
 .tab.active {
@@ -148,8 +150,9 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
   padding: 0 8px 0 12px;
   gap: 4px;
   border-bottom: 1px solid var(--stroke);
+  position: relative;
 }
-.menubar { display: flex; align-items: center; gap: 0; }
+.menubar { display: flex; align-items: center; gap: 0; z-index: 1; }
 .menu-trigger {
   height: 28px;
   padding: 0 10px;
@@ -158,7 +161,14 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
   color: var(--text);
 }
 .menu-trigger:hover, .menu-trigger.open { background: var(--bg-hover); }
-.format-toolbar { display: flex; align-items: center; gap: 2px; margin-left: 10px; }
+.format-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
 .style-select-wrap select {
   height: 28px;
   min-width: 118px;
@@ -170,7 +180,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
   outline: none;
 }
 .style-select-wrap select:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--focus); }
-.settings-btn { margin-left: auto; }
+.settings-btn { margin-left: auto; z-index: 1; }
 
 /* Workspace / editor */
 .workspace { flex: 1; min-height: 0; position: relative; background: var(--bg-editor); }

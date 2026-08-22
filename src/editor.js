@@ -124,7 +124,7 @@ export function indexFromLineCol(text, line, col) {
 }
 
 export function findNext(text, query, from, { matchCase, regex, wrap }) {
-  if (!query) return -1;
+  if (!query) return null;
   try {
     if (regex) {
       const flags = matchCase ? "g" : "gi";
