@@ -39,6 +39,7 @@ let rich;
 let persistTimer;
 let tasksTimer;
 let editingTaskId = null;
+let detailTaskId = null;
 const taskFlashTimers = new Map();
 
 function uid() {
@@ -476,10 +477,22 @@ function showPage(page) {
   $("settings-page").hidden = page !== "settings";
   $("blank-page").hidden = page !== "blank";
   $("editor-page").hidden = page !== "editor";
+  $("app").classList.toggle("page-tasks", page === "blank");
+  const switcher = $("open-blank");
+  if (page === "blank") {
+    switcher.title = "Notes";
+    switcher.setAttribute("aria-label", "Notes");
+  } else {
+    switcher.title = "Tasks";
+    switcher.setAttribute("aria-label", "Tasks");
+  }
   if (page === "settings") syncSettingsForm();
   if (page === "blank") {
     renderTasks();
+    syncTaskDetail();
     $("task-input").focus();
+  } else {
+    closeTaskDetail();
   }
 }
 
@@ -487,13 +500,25 @@ function showSettings(show) {
   showPage(show ? "settings" : "editor");
 }
 
-function persistTasks() {
-  api.setTasks?.(state.tasks.map((t) => ({
+function taskPayload() {
+  return state.tasks.map((t) => ({
     id: t.id,
     title: t.title,
     done: t.done,
     createdAt: t.createdAt,
-  })));
+    description: t.description || "",
+    dueDate: t.dueDate || "",
+  }));
+}
+
+function persistTasks() {
+  const payload = taskPayload();
+  try {
+    localStorage.setItem("notesplus-tasks", JSON.stringify(payload));
+  } catch {
+    /* ignore quota */
+  }
+  return api.setTasks(payload);
 }
 
 function schedulePersistTasks() {
@@ -501,14 +526,44 @@ function schedulePersistTasks() {
   tasksTimer = setTimeout(persistTasks, 400);
 }
 
-function byCreated(a, b) {
+function dueStamp(iso) {
+  if (!iso) return Number.POSITIVE_INFINITY;
+  const parts = String(iso).split("-").map(Number);
+  if (parts.length < 3) return Number.POSITIVE_INFINITY;
+  const time = new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+  return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
+}
+
+function byDueThenCreated(a, b) {
+  const due = dueStamp(a.dueDate) - dueStamp(b.dueDate);
+  if (due !== 0) return due;
   return (a.createdAt || 0) - (b.createdAt || 0);
+}
+
+function formatDueDate(iso) {
+  if (!iso) return "";
+  const parts = iso.split("-").map(Number);
+  if (parts.length < 3 || parts.some((n) => !Number.isFinite(n))) return "";
+  const date = new Date(parts[0], parts[1] - 1, parts[2]);
+  if (Number.isNaN(date.getTime())) return "";
+  const opts = { month: "short", day: "numeric" };
+  if (date.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
+  return date.toLocaleDateString(undefined, opts);
+}
+
+function isDueOverdue(iso, done) {
+  if (!iso || done) return false;
+  const parts = iso.split("-").map(Number);
+  const date = new Date(parts[0], parts[1] - 1, parts[2]);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date < today;
 }
 
 function sortedTasks() {
   return [
-    ...state.tasks.filter((t) => !t.done).sort(byCreated),
-    ...state.tasks.filter((t) => t.done).sort(byCreated),
+    ...state.tasks.filter((t) => !t.done).sort(byDueThenCreated),
+    ...state.tasks.filter((t) => t.done).sort(byDueThenCreated),
   ];
 }
 
@@ -577,7 +632,7 @@ function renderTasks() {
   list.innerHTML = "";
   for (const task of tasks) {
     const row = document.createElement("div");
-    row.className = `task-row${task.done ? " done" : ""}`;
+    row.className = `task-row${task.done ? " done" : ""}${detailTaskId === task.id ? " selected" : ""}`;
     row.dataset.id = task.id;
     const editing = editingTaskId === task.id;
     row.innerHTML = `
@@ -587,6 +642,10 @@ function renderTasks() {
       ${editing
         ? `<input class="task-title-input" id="task-edit" value="${escapeHtml(task.title)}" maxlength="240" />`
         : `<button type="button" class="task-title" data-edit="${task.id}">${escapeHtml(task.title)}</button>`}
+      ${task.dueDate ? `<span class="task-due${isDueOverdue(task.dueDate, task.done) ? " overdue" : ""}">${escapeHtml(formatDueDate(task.dueDate))}</span>` : ""}
+      <button type="button" class="task-open" data-open="${task.id}" title="Open details" aria-label="Open details">
+        <svg viewBox="0 0 16 16" width="10" height="10"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <button type="button" class="task-delete" data-delete="${task.id}" title="Delete task" aria-label="Delete task">
         <svg viewBox="0 0 16 16" width="10" height="10"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       </button>
@@ -598,6 +657,9 @@ function renderTasks() {
   });
   list.querySelectorAll("[data-edit]").forEach((btn) => {
     btn.addEventListener("click", () => startEditTask(btn.dataset.edit));
+  });
+  list.querySelectorAll("[data-open]").forEach((btn) => {
+    btn.addEventListener("click", () => openTaskDetail(btn.dataset.open));
   });
   list.querySelectorAll("[data-delete]").forEach((btn) => {
     btn.addEventListener("click", () => deleteTask(btn.dataset.delete));
@@ -630,11 +692,13 @@ function addTask(title) {
     title: text,
     done: false,
     createdAt: Date.now(),
+    description: "",
+    dueDate: "",
   });
   $("task-input").value = "";
   editingTaskId = null;
   renderTasks();
-  schedulePersistTasks();
+  persistTasks();
 }
 
 function toggleTask(id) {
@@ -642,7 +706,7 @@ function toggleTask(id) {
   if (!task) return;
   task.done = !task.done;
   editingTaskId = null;
-  schedulePersistTasks();
+  persistTasks();
   const row = document.querySelector(`.task-row[data-id="${id}"]`);
   if (!row) {
     renderTasks();
@@ -650,21 +714,66 @@ function toggleTask(id) {
   }
   row.classList.toggle("done", task.done);
   paintTaskCheck(row, task);
+  if (detailTaskId === id) syncTaskDetail();
   row.classList.add("task-flash");
   clearTaskFlash(id);
   taskFlashTimers.set(id, setTimeout(() => {
     taskFlashTimers.delete(id);
     row.classList.remove("task-flash");
     animateTaskReorder();
-  }, 1000));
+  }, 280));
 }
 
 function deleteTask(id) {
   clearTaskFlash(id);
   state.tasks = state.tasks.filter((t) => t.id !== id);
   if (editingTaskId === id) editingTaskId = null;
+  if (detailTaskId === id) closeTaskDetail();
   renderTasks();
-  schedulePersistTasks();
+  persistTasks();
+}
+
+function flushTaskDetail() {
+  const task = state.tasks.find((t) => t.id === detailTaskId);
+  if (!task) return;
+  const title = $("task-detail-title")?.value.trim();
+  if (title) task.title = title;
+  task.description = $("task-detail-desc")?.value ?? task.description ?? "";
+  task.dueDate = $("task-detail-due")?.value || "";
+}
+
+function openTaskDetail(id) {
+  if (detailTaskId && detailTaskId !== id) flushTaskDetail();
+  detailTaskId = id;
+  syncTaskDetail();
+  renderTasks();
+  $("task-detail-desc")?.focus();
+}
+
+function closeTaskDetail() {
+  if (detailTaskId) {
+    flushTaskDetail();
+    persistTasks();
+  }
+  detailTaskId = null;
+  const panel = $("task-detail");
+  if (panel) panel.hidden = true;
+  document.querySelectorAll(".task-row.selected").forEach((row) => row.classList.remove("selected"));
+}
+
+function syncTaskDetail() {
+  const panel = $("task-detail");
+  if (!panel) return;
+  const task = state.tasks.find((t) => t.id === detailTaskId);
+  if (!task) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+  panel.classList.toggle("done", task.done);
+  $("task-detail-title").value = task.title;
+  $("task-detail-due").value = task.dueDate || "";
+  $("task-detail-desc").value = task.description || "";
 }
 
 function startEditTask(id) {
@@ -678,10 +787,14 @@ function finishEditTask(title) {
   if (task) {
     const text = title.trim();
     if (text) task.title = text;
-    else state.tasks = state.tasks.filter((t) => t.id !== task.id);
-    schedulePersistTasks();
+    else {
+      if (detailTaskId === task.id) closeTaskDetail();
+      state.tasks = state.tasks.filter((t) => t.id !== task.id);
+    }
+    persistTasks();
   }
   renderTasks();
+  if (detailTaskId) syncTaskDetail();
 }
 
 function syncSettingsForm() {
@@ -1044,11 +1157,39 @@ function bindUi() {
   $("new-tab").onclick = () => addTab();
   $("open-settings").onclick = () => showSettings(true);
   $("settings-back").onclick = () => showSettings(false);
-  $("open-blank").onclick = () => showPage("blank");
+  $("open-blank").onclick = () => showPage(state.showBlank ? "editor" : "blank");
   $("blank-back").onclick = () => showPage("editor");
   $("task-composer").addEventListener("submit", (e) => {
     e.preventDefault();
     addTask($("task-input").value);
+  });
+  $("task-detail-close").onclick = () => closeTaskDetail();
+  $("task-detail-title").addEventListener("input", () => {
+    const task = state.tasks.find((t) => t.id === detailTaskId);
+    if (!task) return;
+    task.title = $("task-detail-title").value;
+    const label = document.querySelector(`.task-title[data-edit="${task.id}"]`);
+    if (label) label.textContent = task.title;
+    schedulePersistTasks();
+  });
+  $("task-detail-title").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      $("task-detail-desc").focus();
+    }
+  });
+  $("task-detail-desc").addEventListener("input", () => {
+    const task = state.tasks.find((t) => t.id === detailTaskId);
+    if (!task) return;
+    task.description = $("task-detail-desc").value;
+    schedulePersistTasks();
+  });
+  $("task-detail-due").addEventListener("change", () => {
+    const task = state.tasks.find((t) => t.id === detailTaskId);
+    if (!task) return;
+    task.dueDate = $("task-detail-due").value || "";
+    schedulePersistTasks();
+    renderTasks();
   });
   $("fmt-bold").onclick = () => applyFormat("bold");
   $("fmt-italic").onclick = () => applyFormat("italic");
@@ -1103,7 +1244,10 @@ function bindUi() {
   $("setting-wrap").addEventListener("change", async () => { state.settings.wordWrap = $("setting-wrap").checked; await saveSettings(); });
 
   window.addEventListener("keydown", onKey);
-  window.addEventListener("beforeunload", persistSession);
+  window.addEventListener("beforeunload", () => {
+    persistSession();
+    persistTasks();
+  });
   window.addEventListener("dragover", (e) => e.preventDefault());
   window.addEventListener("drop", async (e) => {
     e.preventDefault();
@@ -1158,6 +1302,10 @@ function onKey(e) {
       renderTasks();
       return;
     }
+    if (detailTaskId) {
+      closeTaskDetail();
+      return;
+    }
     if (state.showSettings || state.showBlank) showPage("editor");
   }
 }
@@ -1165,13 +1313,29 @@ function onKey(e) {
 async function restore() {
   state.settings = await api.getSettings();
   state.recent = await api.getRecent();
-  const storedTasks = await api.getTasks?.();
+  let storedTasks = [];
+  try {
+    storedTasks = await api.getTasks();
+  } catch {
+    storedTasks = [];
+  }
+  if (!Array.isArray(storedTasks) || storedTasks.length === 0) {
+    try {
+      const local = JSON.parse(localStorage.getItem("notesplus-tasks") || "[]");
+      if (Array.isArray(local) && local.length) storedTasks = local;
+    } catch {
+      /* ignore */
+    }
+  }
   state.tasks = Array.isArray(storedTasks) ? storedTasks.filter((t) => t && t.title).map((t) => ({
     id: t.id || uid(),
     title: String(t.title),
     done: Boolean(t.done),
     createdAt: Number(t.createdAt) || 0,
+    description: typeof t.description === "string" ? t.description : "",
+    dueDate: typeof t.dueDate === "string" ? t.dueDate : "",
   })) : [];
+  persistTasks();
   applyTheme();
   applyEditorChrome();
   const session = !detached && state.settings.startup === "session" ? await api.getSession() : null;
@@ -1284,8 +1448,10 @@ async function boot() {
 
 async function handleWindowClose() {
   flushActive();
+  if (detailTaskId) flushTaskDetail();
+  clearTimeout(tasksTimer);
   persistSession();
-  persistTasks();
+  await persistTasks();
   if (state.settings.startup !== "session") {
     for (const tab of [...state.tabs]) {
       if (!isDirty(tab)) continue;
