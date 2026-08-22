@@ -39,6 +39,7 @@ let rich;
 let persistTimer;
 let tasksTimer;
 let editingTaskId = null;
+const taskFlashTimers = new Map();
 
 function uid() {
   return crypto.randomUUID();
@@ -500,11 +501,69 @@ function schedulePersistTasks() {
   tasksTimer = setTimeout(persistTasks, 400);
 }
 
+function byCreated(a, b) {
+  return (a.createdAt || 0) - (b.createdAt || 0);
+}
+
 function sortedTasks() {
   return [
-    ...state.tasks.filter((t) => !t.done),
-    ...state.tasks.filter((t) => t.done),
+    ...state.tasks.filter((t) => !t.done).sort(byCreated),
+    ...state.tasks.filter((t) => t.done).sort(byCreated),
   ];
+}
+
+function checkIcon() {
+  return '<svg viewBox="0 0 16 16" width="10" height="10"><path d="M3.2 8.2 6.4 11.2 12.8 4.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+
+function paintTaskCheck(row, task) {
+  const btn = row.querySelector("[data-toggle]");
+  if (!btn) return;
+  btn.innerHTML = task.done ? checkIcon() : "";
+  const label = task.done ? "Mark as not done" : "Mark as done";
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
+}
+
+function clearTaskFlash(id) {
+  const timer = taskFlashTimers.get(id);
+  if (timer) clearTimeout(timer);
+  taskFlashTimers.delete(id);
+}
+
+function animateTaskReorder() {
+  const list = $("task-list");
+  if (!list) return;
+  const rows = [...list.querySelectorAll(".task-row")];
+  if (!rows.length) return;
+  const first = new Map(rows.map((row) => [row.dataset.id, row.getBoundingClientRect()]));
+  for (const task of sortedTasks()) {
+    const row = list.querySelector(`.task-row[data-id="${task.id}"]`);
+    if (row) list.appendChild(row);
+  }
+  for (const row of rows) {
+    const prev = first.get(row.dataset.id);
+    if (!prev) continue;
+    const next = row.getBoundingClientRect();
+    const dy = prev.top - next.top;
+    if (!dy) continue;
+    row.style.transition = "none";
+    row.style.transform = `translateY(${dy}px)`;
+    row.classList.add("task-moving");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        row.style.transition = "transform 0.32s ease";
+        row.style.transform = "";
+        const done = () => {
+          row.style.transition = "";
+          row.style.transform = "";
+          row.classList.remove("task-moving");
+          row.removeEventListener("transitionend", done);
+        };
+        row.addEventListener("transitionend", done);
+      });
+    });
+  }
 }
 
 function renderTasks() {
@@ -523,7 +582,7 @@ function renderTasks() {
     const editing = editingTaskId === task.id;
     row.innerHTML = `
       <button type="button" class="task-check" data-toggle="${task.id}" title="${task.done ? "Mark as not done" : "Mark as done"}" aria-label="${task.done ? "Mark as not done" : "Mark as done"}">
-        ${task.done ? '<svg viewBox="0 0 16 16" width="10" height="10"><path d="M3.2 8.2 6.4 11.2 12.8 4.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ""}
+        ${task.done ? checkIcon() : ""}
       </button>
       ${editing
         ? `<input class="task-title-input" id="task-edit" value="${escapeHtml(task.title)}" maxlength="240" />`
@@ -566,7 +625,7 @@ function renderTasks() {
 function addTask(title) {
   const text = title.trim();
   if (!text) return;
-  state.tasks.unshift({
+  state.tasks.push({
     id: uid(),
     title: text,
     done: false,
@@ -583,11 +642,25 @@ function toggleTask(id) {
   if (!task) return;
   task.done = !task.done;
   editingTaskId = null;
-  renderTasks();
   schedulePersistTasks();
+  const row = document.querySelector(`.task-row[data-id="${id}"]`);
+  if (!row) {
+    renderTasks();
+    return;
+  }
+  row.classList.toggle("done", task.done);
+  paintTaskCheck(row, task);
+  row.classList.add("task-flash");
+  clearTaskFlash(id);
+  taskFlashTimers.set(id, setTimeout(() => {
+    taskFlashTimers.delete(id);
+    row.classList.remove("task-flash");
+    animateTaskReorder();
+  }, 1000));
 }
 
 function deleteTask(id) {
+  clearTaskFlash(id);
   state.tasks = state.tasks.filter((t) => t.id !== id);
   if (editingTaskId === id) editingTaskId = null;
   renderTasks();
@@ -1212,6 +1285,7 @@ async function boot() {
 async function handleWindowClose() {
   flushActive();
   persistSession();
+  persistTasks();
   if (state.settings.startup !== "session") {
     for (const tab of [...state.tabs]) {
       if (!isDirty(tab)) continue;
