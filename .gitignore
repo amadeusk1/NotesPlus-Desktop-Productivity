@@ -3,5 +3,6 @@ dist/
 out/
 .electron/
 .userdata/
+release/
 *.log
 .DS_Store
