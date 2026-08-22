@@ -182,6 +182,9 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .style-select-wrap select:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--focus); }
 .command-end { margin-left: auto; display: flex; align-items: center; gap: 2px; z-index: 1; }
 .command-end .icon-btn { color: var(--text); }
+.icon-notes { display: none; }
+#app.page-tasks .icon-tasks { display: none; }
+#app.page-tasks .icon-notes { display: block; }
 .fluent-icon {
   font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets";
   font-size: 16px;
@@ -281,7 +284,13 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .text-btn:hover { background: var(--bg-press); }
 
 /* Settings */
-.settings-page, .blank-page { background: var(--bg); padding: 12px 28px 32px; overflow: auto; }
+.settings-page { background: var(--bg); padding: 12px 28px 32px; overflow: auto; }
+.blank-page {
+  background: var(--bg);
+  padding: 0;
+  overflow: hidden;
+  flex-direction: row;
+}
 .settings-header { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
 .settings-header h1 { font-size: 20px; font-weight: 600; margin: 0; }
 .settings-group {
@@ -383,6 +392,16 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
   color: var(--text-2);
 }
 .task-row.done .task-title { color: var(--text-3); text-decoration: line-through; }
+.task-due {
+  flex: 0 0 auto;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-3);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.task-row.done .task-due { opacity: 0.7; }
+.task-due.overdue { color: var(--danger); }
 .task-title-input {
   flex: 1;
   min-width: 0;
@@ -407,6 +426,81 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 }
 .task-row:hover .task-delete, .task-delete:focus { opacity: 1; }
 .task-delete:hover { background: var(--bg-press); color: var(--text); }
+.task-open {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  flex: 0 0 auto;
+}
+.task-open:hover, .task-row.selected .task-open { background: var(--bg-press); color: var(--text); }
+.task-row.selected { background: var(--bg-hover); }
+
+.task-main {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 28px 32px;
+  overflow: auto;
+}
+.task-detail {
+  width: min(380px, 46%);
+  flex: 0 0 min(380px, 46%);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--stroke);
+  background: var(--bg);
+  padding: 8px 16px 16px;
+}
+.task-detail-header { display: flex; justify-content: flex-end; margin-bottom: 4px; }
+.task-detail-title {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 20px;
+  font-weight: 600;
+  padding: 6px 4px 10px;
+  user-select: text;
+}
+.task-detail-title:focus { background: var(--bg-input); border-radius: var(--radius); }
+.task-detail.done .task-detail-title { color: var(--text-3); text-decoration: line-through; }
+.task-detail-label {
+  font-size: 12px;
+  color: var(--text-3);
+  padding: 8px 4px 6px;
+}
+.task-detail-due {
+  width: 100%;
+  height: 32px;
+  border: 1px solid var(--stroke-strong);
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  padding: 0 8px;
+  outline: none;
+  font-size: 13px;
+  color-scheme: dark;
+}
+[data-theme="light"] .task-detail-due { color-scheme: light; }
+.task-detail-due:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--focus); }
+.task-detail-desc {
+  flex: 1;
+  min-height: 140px;
+  width: 100%;
+  resize: none;
+  border: 1px solid var(--stroke-strong);
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  padding: 10px;
+  outline: none;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text);
+  user-select: text;
+}
+.task-detail-desc:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--focus); }
 
 /* Status bar */
 .statusbar {
