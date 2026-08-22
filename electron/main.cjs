@@ -239,9 +239,16 @@ ipcMain.handle("session:set", (_e, session) => {
   writeJson(SESSION_PATH(), session);
 });
 
-ipcMain.handle("tasks:get", () => readJson(TASKS_PATH(), []));
+ipcMain.removeHandler("tasks:get");
+ipcMain.removeHandler("tasks:set");
+ipcMain.handle("tasks:get", () => {
+  const tasks = readJson(TASKS_PATH(), []);
+  return Array.isArray(tasks) ? tasks : [];
+});
 ipcMain.handle("tasks:set", (_e, tasks) => {
-  writeJson(TASKS_PATH(), Array.isArray(tasks) ? tasks : []);
+  const list = Array.isArray(tasks) ? tasks : [];
+  writeJson(TASKS_PATH(), list);
+  return list.length;
 });
 
 ipcMain.handle("recent:get", () => readJson(RECENT_PATH(), []));
