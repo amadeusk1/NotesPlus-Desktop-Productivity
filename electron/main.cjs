@@ -1,9 +1,17 @@
 const { app, BrowserWindow, ipcMain, dialog, nativeTheme, Menu, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const iconv = require("iconv-lite");
 
+const build = Number.parseInt(os.release().split(".")[2] || "0", 10);
+const isWin11 = process.platform === "win32" && build >= 22000;
+
 const isDev = !app.isPackaged;
+if (isDev) {
+  app.setPath("userData", path.join(__dirname, "..", ".userdata"));
+  app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
+}
 const USER_DIR = () => app.getPath("userData");
 const SETTINGS_PATH = () => path.join(USER_DIR(), "settings.json");
 const SESSION_PATH = () => path.join(USER_DIR(), "session.json");
@@ -47,7 +55,10 @@ function overlayColors() {
   };
 }
 
-function createWindow(initialFile) {
+function createWindow(options) {
+  const opts = typeof options === "string" ? { initialFile: options } : options || {};
+  const { initialFile, initialTab, detached } = opts;
+  const isDetached = Boolean(detached || initialTab);
   const settings = { ...DEFAULT_SETTINGS, ...readJson(SETTINGS_PATH(), {}) };
   applyTheme(settings.theme);
 
@@ -56,14 +67,16 @@ function createWindow(initialFile) {
     height: 740,
     minWidth: 520,
     minHeight: 360,
-    show: false,
+    show: true,
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#202020" : "#F3F3F3",
     autoHideMenuBar: true,
     title: "Notes+",
-    icon: path.join(__dirname, "..", "src", "assets", "icon.png"),
+    ...(fs.existsSync(path.join(__dirname, "..", "src", "assets", "icon.png"))
+      ? { icon: path.join(__dirname, "..", "src", "assets", "icon.png") }
+      : {}),
     titleBarStyle: "hidden",
     titleBarOverlay: overlayColors(),
-    backgroundMaterial: "mica",
+    ...(isWin11 ? { backgroundMaterial: "mica" } : {}),
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -88,17 +101,40 @@ function createWindow(initialFile) {
 
   win.once("ready-to-show", () => win.show());
 
-  if (isDev) {
-    win.loadURL("http://127.0.0.1:5173");
-  } else {
-    win.loadFile(path.join(__dirname, "..", "dist", "index.html"));
-  }
+  win.on("close", (e) => {
+    if (win.closeAllowed) return;
+    e.preventDefault();
+    win.webContents.send("window:close-request");
+    clearTimeout(win.closeFallback);
+    win.closeFallback = setTimeout(() => {
+      if (win.isDestroyed() || win.closeAllowed) return;
+      win.closeAllowed = true;
+      win.close();
+    }, 2500);
+  });
 
-  if (initialFile) {
-    win.webContents.once("did-finish-load", () => {
-      win.webContents.send("file:open-external", initialFile);
+  if (isDev) {
+    const devUrl = `http://127.0.0.1:5174/${isDetached ? "?detached=1" : ""}`;
+    let attempts = 0;
+    const loadDev = () => {
+      if (!win.isDestroyed()) win.loadURL(devUrl);
+    };
+    win.webContents.on("did-fail-load", (_event, _code, _desc, url, isMainFrame) => {
+      if (!isMainFrame || !url.startsWith("http://127.0.0.1:5174") || attempts >= 20) return;
+      attempts += 1;
+      setTimeout(loadDev, 400);
+    });
+    loadDev();
+  } else {
+    win.loadFile(path.join(__dirname, "..", "dist", "index.html"), {
+      query: isDetached ? { detached: "1" } : {},
     });
   }
+
+  win.webContents.once("did-finish-load", () => {
+    if (initialFile) win.webContents.send("file:open-external", initialFile);
+    if (initialTab) win.webContents.send("tab:open-detached", initialTab);
+  });
 
   return win;
 }
@@ -259,7 +295,18 @@ ipcMain.handle("dialog:unsaved", async (e, name) => {
 });
 
 ipcMain.handle("window:new", () => {
-  createWindow();
+  createWindow({ detached: true });
+});
+
+ipcMain.handle("window:open-tab", (_e, tab) => {
+  createWindow({ detached: true, initialTab: tab });
+});
+
+ipcMain.handle("window:close-ok", (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win) return;
+  win.closeAllowed = true;
+  win.close();
 });
 
 ipcMain.handle("window:print", (e) => {
