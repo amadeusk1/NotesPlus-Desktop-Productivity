@@ -4,12 +4,46 @@
   "version": "1.0.0",
   "description": "A Windows 11 Notepad clone",
   "main": "electron/main.cjs",
-  "author": "Notes+",
+  "author": "amadeusk1",
   "license": "MIT",
   "scripts": {
     "dev": "concurrently -k \"vite\" \"wait-on tcp:5174 && node scripts/run-electron.cjs\"",
     "build": "vite build",
-    "start": "node scripts/run-electron.cjs"
+    "start": "node scripts/run-electron.cjs",
+    "pack": "vite build && electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.amadeusk1.notesplus",
+    "productName": "Notes+",
+    "copyright": "Copyright © amadeusk1",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "src/assets/icon.png",
+        "to": "icon.png"
+      }
+    ],
+    "win": {
+      "icon": "src/assets/icon.png",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "NotesPlus-${version}.exe"
+    }
   },
   "dependencies": {
     "@tiptap/core": "^2.11.5",
@@ -23,6 +57,7 @@
   "devDependencies": {
     "concurrently": "^9.1.2",
     "electron": "^37.2.6",
+    "electron-builder": "^26.15.3",
     "vite": "^7.0.6",
     "wait-on": "^8.0.4"
   }

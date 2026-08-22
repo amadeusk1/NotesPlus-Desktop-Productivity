@@ -72,9 +72,11 @@ function createWindow(options) {
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#202020" : "#F3F3F3",
     autoHideMenuBar: true,
     title: "Notes+",
-    ...(fs.existsSync(path.join(__dirname, "..", "src", "assets", "icon.png"))
-      ? { icon: path.join(__dirname, "..", "src", "assets", "icon.png") }
-      : {}),
+    ...(fs.existsSync(path.join(process.resourcesPath, "icon.png"))
+      ? { icon: path.join(process.resourcesPath, "icon.png") }
+      : fs.existsSync(path.join(__dirname, "..", "src", "assets", "icon.png"))
+        ? { icon: path.join(__dirname, "..", "src", "assets", "icon.png") }
+        : {}),
     titleBarStyle: "hidden",
     titleBarOverlay: overlayColors(),
     ...(isWin11 ? { backgroundMaterial: "mica" } : {}),
