@@ -350,6 +350,12 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
   font-size: 13.5px;
 }
 .task-row:hover { background: var(--bg-hover); }
+.task-row.task-flash,
+.task-row.task-flash:hover {
+  background: var(--selection);
+  box-shadow: inset 0 0 0 1px var(--focus);
+}
+.task-row.task-moving { z-index: 1; }
 .task-check {
   width: 16px;
   height: 16px;
