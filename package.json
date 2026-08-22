@@ -1,0 +1,29 @@
+{
+  "name": "notes-plus",
+  "productName": "Notes+",
+  "version": "1.0.0",
+  "description": "A Windows 11 Notepad clone",
+  "main": "electron/main.cjs",
+  "author": "Notes+",
+  "license": "MIT",
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "build": "vite build",
+    "start": "electron ."
+  },
+  "dependencies": {
+    "@tiptap/core": "^2.11.5",
+    "@tiptap/extension-link": "^2.11.5",
+    "@tiptap/extension-placeholder": "^2.11.5",
+    "@tiptap/starter-kit": "^2.11.5",
+    "iconv-lite": "^0.6.3",
+    "markdown-it": "^14.1.0",
+    "turndown": "^7.2.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "electron": "^37.2.6",
+    "vite": "^7.0.6",
+    "wait-on": "^8.0.4"
+  }
+}
