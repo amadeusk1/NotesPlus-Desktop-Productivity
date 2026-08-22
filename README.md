@@ -1,6 +1,11 @@
 # Notes+
 
-Notes+ is a desktop text editor that looks like Windows 11 Notepad. It is dark themed and supports live Markdown formatting.
+I loved the simplicity and the usability of the Notepad app on Windows 11. I had some problems with it, though:
+
+1. I didn't have it on my Windows 10 computer (I didn't check to see if I can get it, tbh).
+2. I wanted more functionality, such as a tasks screen, without losing the simplicity of Notepad.
+
+Notes+ is that app. It looks like Windows 11 Notepad — dark theme, tabs, live Markdown — and it runs on Windows 10 and 11. The pencil icon opens a Tasks screen that stays as simple as the rest of the editor.
 
 ## Screenshots
 
@@ -33,8 +38,9 @@ npm run dev
 
 ## Features
 
-Open files in tabs
-Save as txt or md
-Switch between formatted view and Markdown syntax
-Find and replace
-Restore your last session
+- Open files in tabs
+- Save as txt or md
+- Switch between formatted view and Markdown syntax
+- Find and replace
+- Restore your last session
+- Tasks: add, check off, due dates, and a description pane
