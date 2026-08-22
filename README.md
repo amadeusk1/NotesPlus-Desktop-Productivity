@@ -5,7 +5,7 @@ I loved the simplicity and the usability of the Notepad app on Windows 11. I had
 1. I didn't have it on my Windows 10 computer (I didn't check to see if I can get it, tbh).
 2. I wanted more functionality, such as a tasks screen, without losing the simplicity of Notepad.
 
-Notes+ is that app. It looks like Windows 11 Notepad — dark theme, tabs, live Markdown — and it runs on Windows 10 and 11. The pencil icon opens a Tasks screen that stays as simple as the rest of the editor.
+Notes+ is that app. It looks like Windows 11 Notepad (dark theme, tabs, live Markdown) and it runs on Windows 10 and 11. The pencil icon opens a Tasks screen that stays as simple as the rest of the editor.
 
 ## Screenshots
 
