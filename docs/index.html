@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notes+</title>
+    <link rel="icon" href="./icon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <div class="window">
+        <header class="titlebar">
+          <div class="app-icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" width="16" height="16">
+              <rect x="2.5" y="1.5" width="11" height="13" rx="1.2" fill="#4CC2FF" />
+              <path d="M10 1.5h2.2c.6 0 1 .4 1 1V5L10 1.5z" fill="#9AE2FF" />
+              <rect x="4.4" y="6.2" width="7.2" height="1.05" rx=".4" fill="#0A2A3A" opacity=".55" />
+              <rect x="4.4" y="8.3" width="7.2" height="1.05" rx=".4" fill="#0A2A3A" opacity=".55" />
+              <rect x="4.4" y="10.4" width="5" height="1.05" rx=".4" fill="#0A2A3A" opacity=".55" />
+            </svg>
+          </div>
+          <div class="tabstrip">
+            <div class="tab active">Notes+</div>
+            <div class="tab">Untitled</div>
+          </div>
+          <button class="tab-add" aria-hidden="true">+</button>
+          <div class="titlebar-drag"></div>
+          <div class="caption" aria-hidden="true"><span>─</span><span>☐</span><span>×</span></div>
+        </header>
+
+        <div class="commandbar">
+          <nav class="menubar">
+            <span class="menu-trigger">File</span>
+            <span class="menu-trigger">Edit</span>
+            <span class="menu-trigger">View</span>
+          </nav>
+          <div class="format-toolbar" aria-hidden="true">
+            <span><strong>B</strong></span>
+            <span><em>I</em></span>
+            <span><s>S</s></span>
+          </div>
+          <div class="command-end" aria-hidden="true">⚙</div>
+        </div>
+
+        <main class="workspace">
+          <p class="kicker">Windows desktop editor</p>
+          <h1>Notes+</h1>
+          <p class="lead">
+            A dark Windows 11 Notepad clone with tabs, live Markdown formatting, find and replace, session restore, and a tasks page.
+          </p>
+          <div class="actions">
+            <a class="btn primary" href="https://github.com/amadeusk1/NotesPlus-Desktop-Productivity/releases/download/v1.0.0/NotesPlus-1.0.0.exe">Download for Windows</a>
+            <a class="btn ghost" href="https://github.com/amadeusk1/NotesPlus-Desktop-Productivity">View source</a>
+          </div>
+          <div class="features">
+            <article class="card">
+              <h2>Looks like Notepad</h2>
+              <p>Mica-dark chrome, title-bar tabs, File / Edit / View, and a status bar for line, zoom, and encoding.</p>
+            </article>
+            <article class="card">
+              <h2>Live Markdown</h2>
+              <p>Format as you type, or switch to Markdown source. Bold, italic, headings, lists, and links.</p>
+            </article>
+            <article class="card">
+              <h2>Local files</h2>
+              <p>Open and save txt or md, keep recent files, and restore unsaved tabs from the last session.</p>
+            </article>
+            <article class="card">
+              <h2>Tasks</h2>
+              <p>A simple task list lives next to Settings. Checked items move down with the same dark UI.</p>
+            </article>
+          </div>
+        </main>
+
+        <footer class="statusbar">
+          <span class="status-item">Ln 1, Col 1</span>
+          <span class="status-spacer"></span>
+          <span class="status-item">100%</span>
+          <span class="status-item">Windows (CRLF)</span>
+          <span class="status-item">UTF-8</span>
+          <span class="status-item">v1.0.0</span>
+        </footer>
+      </div>
+    </div>
+  </body>
+</html>
