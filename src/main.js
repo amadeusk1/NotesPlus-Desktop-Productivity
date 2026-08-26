@@ -14,6 +14,7 @@ import {
 const api = window.notesPlus;
 const $ = (id) => document.getElementById(id);
 const detached = new URLSearchParams(location.search).has("detached");
+const TASKS_TAB_ID = "__tasks__";
 
 const state = {
   settings: {
@@ -32,6 +33,7 @@ const state = {
   recent: [],
   showSettings: false,
   showBlank: false,
+  tasksTabOpen: false,
   tasks: [],
 };
 
@@ -111,6 +113,8 @@ function persistSession() {
     activeId: state.tabs.findIndex((t) => t.id === state.activeId),
     zoom: state.zoom,
     untitled: state.untitled,
+    showTasks: state.showBlank,
+    tasksTabOpen: state.tasksTabOpen,
   });
 }
 
@@ -154,21 +158,24 @@ function setActiveContent(content, view) {
   }
 }
 
+function tabCloseIcon() {
+  return '<svg viewBox="0 0 16 16" width="10" height="10"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+}
+
 function renderTabs() {
   const strip = $("tabstrip");
   strip.innerHTML = "";
+  const noteActive = !state.showBlank && !state.showSettings;
   for (const tab of state.tabs) {
     const el = document.createElement("button");
-    el.className = `tab${tab.id === state.activeId ? " active" : ""}`;
+    el.className = `tab${noteActive && tab.id === state.activeId ? " active" : ""}`;
     el.dataset.id = tab.id;
     el.title = tab.filePath || tab.title;
     const dirty = isDirty(tab);
     el.innerHTML = `
       <span class="tab-title">${escapeHtml(tab.title)}</span>
       ${dirty ? '<span class="tab-dirty"></span>' : ""}
-      <span class="tab-close" data-close="${tab.id}" title="Close tab">
-        <svg viewBox="0 0 16 16" width="10" height="10"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      </span>
+      <span class="tab-close" data-close="${tab.id}" title="Close tab">${tabCloseIcon()}</span>
     `;
     el.addEventListener("click", (e) => {
       if (e.target.closest("[data-close]")) {
@@ -197,6 +204,28 @@ function renderTabs() {
     el.addEventListener("drop", (e) => {
       e.preventDefault();
       reorderTabs(e.dataTransfer.getData("text/tab-id"), tab.id);
+    });
+    strip.appendChild(el);
+  }
+  if (state.tasksTabOpen || state.showBlank) {
+    const el = document.createElement("button");
+    el.className = `tab tab-tasks${state.showBlank ? " active" : ""}`;
+    el.dataset.id = TASKS_TAB_ID;
+    el.title = "Tasks";
+    el.innerHTML = `
+      <span class="tab-title">Tasks</span>
+      <span class="tab-close" data-close="${TASKS_TAB_ID}" title="Close tab">${tabCloseIcon()}</span>
+    `;
+    el.addEventListener("click", (e) => {
+      if (e.target.closest("[data-close]")) {
+        closeTasksTab();
+        return;
+      }
+      showPage("blank");
+    });
+    el.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      showTabMenu(e.clientX, e.clientY, TASKS_TAB_ID);
     });
     strip.appendChild(el);
   }
@@ -262,7 +291,16 @@ function markDirty() {
 }
 
 function switchTab(id) {
-  if (state.activeId === id) return;
+  if (id === TASKS_TAB_ID) {
+    showPage("blank");
+    return;
+  }
+  const wasTasks = state.showBlank;
+  if (state.showBlank || state.showSettings) showPage("editor");
+  if (state.activeId === id) {
+    if (wasTasks) renderTabs();
+    return;
+  }
   flushActive();
   state.activeId = id;
   const tab = activeTab();
@@ -282,6 +320,7 @@ function applyWrap() {
 }
 
 function addTab(partial) {
+  if (state.showBlank || state.showSettings) showPage("editor");
   flushActive();
   const tab = createTab(partial);
   state.tabs.push(tab);
@@ -295,6 +334,10 @@ function addTab(partial) {
 }
 
 async function closeTab(id) {
+  if (id === TASKS_TAB_ID) {
+    closeTasksTab();
+    return;
+  }
   const tab = state.tabs.find((t) => t.id === id);
   if (!tab) return;
   if (tab.id === state.activeId) flushActive();
@@ -309,14 +352,24 @@ async function closeTab(id) {
   const idx = state.tabs.findIndex((t) => t.id === id);
   state.tabs.splice(idx, 1);
   if (!state.tabs.length) {
+    if (state.showBlank) {
+      const next = createTab();
+      state.tabs.push(next);
+      state.activeId = next.id;
+      renderTabs();
+      schedulePersist();
+      return;
+    }
     addTab();
     return;
   }
   const next = state.tabs[Math.max(0, idx - 1)];
   state.activeId = next.id;
-  setActiveContent(next.content, next.view);
+  if (!state.showBlank) {
+    setActiveContent(next.content, next.view);
+    updateStatus();
+  }
   renderTabs();
-  updateStatus();
   schedulePersist();
 }
 
@@ -343,6 +396,7 @@ async function saveTab(tab, saveAs) {
 
 async function openPayload(payload) {
   if (!payload) return;
+  if (state.showBlank || state.showSettings) showPage("editor");
   const existing = state.tabs.find((t) => t.filePath === payload.filePath);
   if (existing) {
     switchTab(existing.id);
@@ -474,6 +528,7 @@ function zoomBy(delta) {
 function showPage(page) {
   state.showSettings = page === "settings";
   state.showBlank = page === "blank";
+  if (page === "blank") state.tasksTabOpen = true;
   $("settings-page").hidden = page !== "settings";
   $("blank-page").hidden = page !== "blank";
   $("editor-page").hidden = page !== "editor";
@@ -488,12 +543,23 @@ function showPage(page) {
   }
   if (page === "settings") syncSettingsForm();
   if (page === "blank") {
+    $("find-flyout").hidden = true;
+    closeMenus();
     renderTasks();
     syncTaskDetail();
     $("task-input").focus();
   } else {
     closeTaskDetail();
   }
+  renderTabs();
+  schedulePersist();
+}
+
+function closeTasksTab() {
+  state.tasksTabOpen = false;
+  if (state.showBlank) showPage("editor");
+  else renderTabs();
+  schedulePersist();
 }
 
 function showSettings(show) {
@@ -944,21 +1010,26 @@ function showTabMenu(x, y, id) {
   popup.className = "menu-popup";
   popup.style.left = `${x}px`;
   popup.style.top = `${y}px`;
-  const items = [
-    { label: "New tab", run: () => addTab() },
-    { label: "Close tab", run: () => closeTab(id) },
-    { label: "Close others", run: async () => {
-      for (const t of [...state.tabs]) if (t.id !== id) await closeTab(t.id);
-    } },
-    { label: "Close on the right", run: async () => {
-      const idx = state.tabs.findIndex((t) => t.id === id);
-      for (const t of state.tabs.slice(idx + 1)) await closeTab(t.id);
-    } },
-    { label: "Move to new window", run: () => moveTabToNewWindow(id) },
-    ...(state.tabs.find((t) => t.id === id)?.filePath
-      ? [{ label: "Open file location", run: () => api.showInFolder(state.tabs.find((t) => t.id === id).filePath) }]
-      : []),
-  ];
+  const items = id === TASKS_TAB_ID
+    ? [
+      { label: "New tab", run: () => addTab() },
+      { label: "Close tab", run: () => closeTasksTab() },
+    ]
+    : [
+      { label: "New tab", run: () => addTab() },
+      { label: "Close tab", run: () => closeTab(id) },
+      { label: "Close others", run: async () => {
+        for (const t of [...state.tabs]) if (t.id !== id) await closeTab(t.id);
+      } },
+      { label: "Close on the right", run: async () => {
+        const idx = state.tabs.findIndex((t) => t.id === id);
+        for (const t of state.tabs.slice(idx + 1)) await closeTab(t.id);
+      } },
+      { label: "Move to new window", run: () => moveTabToNewWindow(id) },
+      ...(state.tabs.find((t) => t.id === id)?.filePath
+        ? [{ label: "Open file location", run: () => api.showInFolder(state.tabs.find((t) => t.id === id).filePath) }]
+        : []),
+    ];
   popup.innerHTML = items.map((item, i) => `<button class="menu-item" data-i="${i}">${item.label}</button>`).join("");
   layer.appendChild(popup);
   popup.querySelectorAll("[data-i]").forEach((btn) => {
@@ -1269,6 +1340,27 @@ function onKey(e) {
   const ctrl = e.ctrlKey || e.metaKey;
   if (ctrl && key === "n" && e.shiftKey) { e.preventDefault(); api.newWindow(); return; }
   if (ctrl && key === "n") { e.preventDefault(); addTab(); return; }
+  if (ctrl && e.key === "Tab") {
+    e.preventDefault();
+    cycleTabs(e.shiftKey);
+    return;
+  }
+  if (state.showBlank) {
+    if (ctrl && key === "w") { e.preventDefault(); closeTasksTab(); return; }
+    if (e.key === "Escape") {
+      closeMenus();
+      if (editingTaskId) {
+        editingTaskId = null;
+        renderTasks();
+        return;
+      }
+      if (detailTaskId) {
+        closeTaskDetail();
+        return;
+      }
+    }
+    return;
+  }
   if (ctrl && key === "o") { e.preventDefault(); api.openDialog().then(openPayload); return; }
   if (ctrl && key === "s" && e.shiftKey) { e.preventDefault(); const t = activeTab(); if (t) saveTab(t, true); return; }
   if (ctrl && key === "s") { e.preventDefault(); const t = activeTab(); if (t) saveTab(t, false); return; }
@@ -1283,31 +1375,23 @@ function onKey(e) {
   if (ctrl && (e.key === "=" || e.key === "+")) { e.preventDefault(); zoomBy(0.1); return; }
   if (ctrl && e.key === "-") { e.preventDefault(); zoomBy(-0.1); return; }
   if (ctrl && key === "0") { e.preventDefault(); state.zoom = 1; applyEditorChrome(); return; }
-  if (ctrl && e.key === "Tab") {
-    e.preventDefault();
-    const idx = state.tabs.findIndex((t) => t.id === state.activeId);
-    const next = e.shiftKey
-      ? state.tabs[(idx - 1 + state.tabs.length) % state.tabs.length]
-      : state.tabs[(idx + 1) % state.tabs.length];
-    switchTab(next.id);
-    return;
-  }
   if (e.key === "F3") { e.preventDefault(); runFind(e.shiftKey ? -1 : 1); return; }
   if (e.key === "F5") { e.preventDefault(); insertDateTime(); return; }
   if (e.key === "Escape") {
     closeMenus();
     $("find-flyout").hidden = true;
-    if (editingTaskId) {
-      editingTaskId = null;
-      renderTasks();
-      return;
-    }
-    if (detailTaskId) {
-      closeTaskDetail();
-      return;
-    }
-    if (state.showSettings || state.showBlank) showPage("editor");
+    if (state.showSettings) showPage("editor");
   }
+}
+
+function cycleTabs(back) {
+  const ids = state.tabs.map((t) => t.id);
+  if (state.tasksTabOpen || state.showBlank) ids.push(TASKS_TAB_ID);
+  if (!ids.length) return;
+  const current = state.showBlank ? TASKS_TAB_ID : state.activeId;
+  const idx = Math.max(0, ids.indexOf(current));
+  const next = ids[(idx + (back ? -1 : 1) + ids.length) % ids.length];
+  switchTab(next);
 }
 
 async function restore() {
@@ -1354,6 +1438,9 @@ async function restore() {
   applyWrap();
   renderTabs();
   updateStatus();
+  if (session?.tasksTabOpen || session?.showTasks) state.tasksTabOpen = true;
+  if (session?.showTasks) showPage("blank");
+  else if (state.tasksTabOpen) renderTabs();
 }
 
 async function moveTabToNewWindow(id) {

@@ -185,6 +185,10 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .icon-notes { display: none; }
 #app.page-tasks .icon-tasks { display: none; }
 #app.page-tasks .icon-notes { display: block; }
+#app.page-tasks .menubar,
+#app.page-tasks .format-toolbar { display: none; }
+#app.page-tasks .statusbar { visibility: hidden; }
+#app.page-tasks #blank-back { display: none; }
 .fluent-icon {
   font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets";
   font-size: 16px;
