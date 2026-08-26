@@ -1,7 +1,7 @@
 {
   "name": "notes-plus",
   "productName": "Notes+",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A Windows 11 Notepad clone",
   "main": "electron/main.cjs",
   "author": "amadeusk1",
@@ -10,7 +10,7 @@
     "dev": "concurrently -k \"vite\" \"wait-on tcp:5174 && node scripts/run-electron.cjs\"",
     "build": "vite build",
     "start": "node scripts/run-electron.cjs",
-    "pack": "vite build && electron-builder --win portable"
+    "pack": "vite build && electron-builder --win nsis"
   },
   "build": {
     "appId": "com.amadeusk1.notesplus",
@@ -32,17 +32,25 @@
     ],
     "win": {
       "icon": "src/assets/icon.png",
+      "executableName": "NotesPlus",
       "target": [
         {
-          "target": "portable",
+          "target": "nsis",
           "arch": [
             "x64"
           ]
         }
       ]
     },
-    "portable": {
-      "artifactName": "NotesPlus-${version}.exe"
+    "nsis": {
+      "artifactName": "NotesPlus-${version}-Setup.exe",
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": true,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Notes+",
+      "uninstallDisplayName": "Notes+"
     }
   },
   "dependencies": {

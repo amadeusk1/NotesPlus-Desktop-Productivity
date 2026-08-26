@@ -32,9 +32,9 @@ Theme, font, and how files open.
 
 ## Download
 
-[Download Notes+ for Windows](https://github.com/amadeusk1/NotesPlus-Desktop-Productivity/releases/download/v1.1.0/NotesPlus-1.1.0.exe)
+[Download Notes+ for Windows](https://github.com/amadeusk1/NotesPlus-Desktop-Productivity/releases/latest)
 
-No install. Open the `.exe` and it runs.
+Run the installer from the latest GitHub release. After it is installed, you can pin Notes+ to the taskbar from the Start menu or from the running app icon.
 
 [Notes+ website](https://amadeusk1.github.io/NotesPlus-Desktop-Productivity/)
 

@@ -4,14 +4,45 @@ const fs = require("fs");
 const os = require("os");
 const iconv = require("iconv-lite");
 
+const APP_USER_MODEL_ID = "com.amadeusk1.notesplus";
 const build = Number.parseInt(os.release().split(".")[2] || "0", 10);
 const isWin11 = process.platform === "win32" && build >= 22000;
+
+if (process.platform === "win32") {
+  app.setAppUserModelId(APP_USER_MODEL_ID);
+}
 
 const isDev = !app.isPackaged;
 if (isDev) {
   app.setPath("userData", path.join(__dirname, "..", ".userdata"));
   app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
 }
+
+function ensureStartMenuShortcut() {
+  if (process.platform !== "win32" || !app.isPackaged) return;
+  const shortcutPath = path.join(
+    app.getPath("appData"),
+    "Microsoft",
+    "Windows",
+    "Start Menu",
+    "Programs",
+    "Notes+.lnk"
+  );
+  const exe = process.execPath;
+  const options = {
+    target: exe,
+    cwd: path.dirname(exe),
+    args: "",
+    description: "Notes+",
+    icon: exe,
+    iconIndex: 0,
+    appUserModelId: APP_USER_MODEL_ID,
+  };
+  if (!shell.writeShortcutLink(shortcutPath, "update", options)) {
+    shell.writeShortcutLink(shortcutPath, "create", options);
+  }
+}
+
 const USER_DIR = () => app.getPath("userData");
 const SETTINGS_PATH = () => path.join(USER_DIR(), "settings.json");
 const SESSION_PATH = () => path.join(USER_DIR(), "session.json");
@@ -208,6 +239,7 @@ if (!gotLock) {
 }
 
 app.whenReady().then(() => {
+  ensureStartMenuShortcut();
   const fileArg = process.argv.find((a) => /\.(txt|md|log|ini|json|xml|csv)$/i.test(a) && fs.existsSync(a));
   createWindow(fileArg);
 
